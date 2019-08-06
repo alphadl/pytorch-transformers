@@ -367,16 +367,16 @@ class XLNetRelativeAttention(nn.Module):
         self.d_model = config.d_model
         self.scale = 1 / (config.d_head ** 0.5)
 
-        self.q = nn.Parameter(torch.Tensor(config.d_model, self.n_head, self.d_head))
-        self.k = nn.Parameter(torch.Tensor(config.d_model, self.n_head, self.d_head))
-        self.v = nn.Parameter(torch.Tensor(config.d_model, self.n_head, self.d_head))
-        self.o = nn.Parameter(torch.Tensor(config.d_model, self.n_head, self.d_head))
-        self.r = nn.Parameter(torch.Tensor(config.d_model, self.n_head, self.d_head))
+        self.q = nn.Parameter(torch.FloatTensor(config.d_model, self.n_head, self.d_head))
+        self.k = nn.Parameter(torch.FloatTensor(config.d_model, self.n_head, self.d_head))
+        self.v = nn.Parameter(torch.FloatTensor(config.d_model, self.n_head, self.d_head))
+        self.o = nn.Parameter(torch.FloatTensor(config.d_model, self.n_head, self.d_head))
+        self.r = nn.Parameter(torch.FloatTensor(config.d_model, self.n_head, self.d_head))
 
-        self.r_r_bias = nn.Parameter(torch.Tensor(self.n_head, self.d_head))
-        self.r_s_bias = nn.Parameter(torch.Tensor(self.n_head, self.d_head))
-        self.r_w_bias = nn.Parameter(torch.Tensor(self.n_head, self.d_head))
-        self.seg_embed = nn.Parameter(torch.Tensor(2, self.n_head, self.d_head))
+        self.r_r_bias = nn.Parameter(torch.FloatTensor(self.n_head, self.d_head))
+        self.r_s_bias = nn.Parameter(torch.FloatTensor(self.n_head, self.d_head))
+        self.r_w_bias = nn.Parameter(torch.FloatTensor(self.n_head, self.d_head))
+        self.seg_embed = nn.Parameter(torch.FloatTensor(2, self.n_head, self.d_head))
 
         self.layer_norm = XLNetLayerNorm(config.d_model, eps=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.dropout)
@@ -660,11 +660,11 @@ XLNET_INPUTS_DOCSTRING = r"""
             A parallel sequence of tokens (can be used to indicate various portions of the inputs).
             The embeddings from these tokens will be summed with the respective token embeddings.
             Indices are selected in the vocabulary (unlike BERT which has a specific vocabulary for segment indices).
-        **attention_mask**: (`optional`) ``torch.Tensor`` of shape ``(batch_size, sequence_length)``:
+        **attention_mask**: (`optional`) ``torch.FloatTensor`` of shape ``(batch_size, sequence_length)``:
             Mask to avoid performing attention on padding token indices.
             Mask values selected in ``[0, 1]``:
             ``1`` for tokens that are NOT MASKED, ``0`` for MASKED tokens.
-        **input_mask**: (`optional`) ``torch.Tensor`` of shape ``(batch_size, sequence_length)``:
+        **input_mask**: (`optional`) ``torch.FloatTensor`` of shape ``(batch_size, sequence_length)``:
             Mask to avoid performing attention on padding token indices.
             Negative of `attention_mask`, i.e. with 0 for real tokens and 1 for padding.
             Kept for compatibility with the original code base.
@@ -685,7 +685,7 @@ XLNET_INPUTS_DOCSTRING = r"""
             Mask to indicate the output tokens to use.
             If ``target_mapping[k, i, j] = 1``, the i-th predict in batch k is on the j-th token.
             Only used during pretraining for partial prediction or for sequential decoding (generation).
-        **head_mask**: (`optional`) ``torch.Tensor`` of shape ``(num_heads,)`` or ``(num_layers, num_heads)``:
+        **head_mask**: (`optional`) ``torch.FloatTensor`` of shape ``(num_heads,)`` or ``(num_layers, num_heads)``:
             Mask to nullify selected heads of the self-attention modules.
             Mask values selected in ``[0, 1]``:
             ``1`` indicates the head is **not masked**, ``0`` indicates the head is **masked**.
@@ -702,22 +702,22 @@ class XLNetModel(XLNetPreTrainedModel):
             list of ``torch.FloatTensor`` (one for each layer):
             that contains pre-computed hidden-states (key and values in the attention blocks) as computed by the model
             (see `mems` input above). Can be used to speed up sequential decoding and attend to longer context.
-        **attentions**: (`optional`, returned when ``config.output_attentions=True``)
-            list of ``torch.FloatTensor`` (one for each layer) of shape ``(batch_size, num_heads, sequence_length, sequence_length)``:
-            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention heads.
         **hidden_states**: (`optional`, returned when ``config.output_hidden_states=True``)
             list of ``torch.FloatTensor`` (one for the output of each layer + the output of the embeddings)
             of shape ``(batch_size, sequence_length, hidden_size)``:
             Hidden-states of the model at the output of each layer plus the initial embedding outputs.
+        **attentions**: (`optional`, returned when ``config.output_attentions=True``)
+            list of ``torch.FloatTensor`` (one for each layer) of shape ``(batch_size, num_heads, sequence_length, sequence_length)``:
+            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention heads.
 
     Examples::
 
-        >>> config = XLNetConfig.from_pretrained('xlnet-large-cased')
-        >>> tokenizer = XLNetTokenizer.from_pretrained('xlnet-large-cased')
-        >>> model = XLNetModel(config)
-        >>> input_ids = torch.tensor(tokenizer.encode("Hello, my dog is cute")).unsqueeze(0)  # Batch size 1
-        >>> outputs = model(input_ids)
-        >>> last_hidden_states = outputs[0]  # The last hidden-state is the first element of the output tuple
+        config = XLNetConfig.from_pretrained('xlnet-large-cased')
+        tokenizer = XLNetTokenizer.from_pretrained('xlnet-large-cased')
+        model = XLNetModel(config)
+        input_ids = torch.tensor(tokenizer.encode("Hello, my dog is cute")).unsqueeze(0)  # Batch size 1
+        outputs = model(input_ids)
+        last_hidden_states = outputs[0]  # The last hidden-state is the first element of the output tuple
 
     """
     def __init__(self, config):
@@ -735,7 +735,7 @@ class XLNetModel(XLNetPreTrainedModel):
         self.n_layer = config.n_layer
 
         self.word_embedding = nn.Embedding(config.n_token, config.d_model)
-        self.mask_emb = nn.Parameter(torch.Tensor(1, 1, config.d_model))
+        self.mask_emb = nn.Parameter(torch.FloatTensor(1, 1, config.d_model))
         self.layer = nn.ModuleList([XLNetLayer(config) for _ in range(config.n_layer)])
         self.dropout = nn.Dropout(config.dropout)
 
@@ -1009,27 +1009,27 @@ class XLNetLMHeadModel(XLNetPreTrainedModel):
             list of ``torch.FloatTensor`` (one for each layer):
             that contains pre-computed hidden-states (key and values in the attention blocks) as computed by the model
             (see `mems` input above). Can be used to speed up sequential decoding and attend to longer context.
-        **attentions**: (`optional`, returned when ``config.output_attentions=True``)
-            list of ``torch.FloatTensor`` (one for each layer) of shape ``(batch_size, num_heads, sequence_length, sequence_length)``:
-            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention heads.
         **hidden_states**: (`optional`, returned when ``config.output_hidden_states=True``)
             list of ``torch.FloatTensor`` (one for the output of each layer + the output of the embeddings)
             of shape ``(batch_size, sequence_length, hidden_size)``:
             Hidden-states of the model at the output of each layer plus the initial embedding outputs.
+        **attentions**: (`optional`, returned when ``config.output_attentions=True``)
+            list of ``torch.FloatTensor`` (one for each layer) of shape ``(batch_size, num_heads, sequence_length, sequence_length)``:
+            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention heads.
 
     Examples::
 
-        >>> config = XLNetConfig.from_pretrained('xlnet-large-cased')
-        >>> tokenizer = XLNetTokenizer.from_pretrained('xlnet-large-cased')
-        >>> model = XLNetLMHeadModel(config)
-        >>> # We show how to setup inputs to predict a next token using a bi-directional context.
-        >>> input_ids = torch.tensor(tokenizer.encode("Hello, my dog is very <mask>")).unsqueeze(0)  # We will predict the masked token
-        >>> perm_mask = torch.zeros((1, input_ids.shape[1], input_ids.shape[1]), dtype=torch.float)
-        >>> perm_mask[:, :, -1] = 1.0  # Previous tokens don't see last token
-        >>> target_mapping = torch.zeros((1, 1, input_ids.shape[1]), dtype=torch.float)  # Shape [1, 1, seq_length] => let's predict one token
-        >>> target_mapping[0, 0, -1] = 1.0  # Our first (and only) prediction will be the last token of the sequence (the masked token)
-        >>> outputs = model(input_ids, perm_mask=perm_mask, target_mapping=target_mapping)
-        >>> next_token_logits = outputs[0]  # Output has shape [target_mapping.size(0), target_mapping.size(1), config.vocab_size]
+        config = XLNetConfig.from_pretrained('xlnet-large-cased')
+        tokenizer = XLNetTokenizer.from_pretrained('xlnet-large-cased')
+        model = XLNetLMHeadModel(config)
+        # We show how to setup inputs to predict a next token using a bi-directional context.
+        input_ids = torch.tensor(tokenizer.encode("Hello, my dog is very <mask>")).unsqueeze(0)  # We will predict the masked token
+        perm_mask = torch.zeros((1, input_ids.shape[1], input_ids.shape[1]), dtype=torch.float)
+        perm_mask[:, :, -1] = 1.0  # Previous tokens don't see last token
+        target_mapping = torch.zeros((1, 1, input_ids.shape[1]), dtype=torch.float)  # Shape [1, 1, seq_length] => let's predict one token
+        target_mapping[0, 0, -1] = 1.0  # Our first (and only) prediction will be the last token of the sequence (the masked token)
+        outputs = model(input_ids, perm_mask=perm_mask, target_mapping=target_mapping)
+        next_token_logits = outputs[0]  # Output has shape [target_mapping.size(0), target_mapping.size(1), config.vocab_size]
 
     """
     def __init__(self, config):
@@ -1090,24 +1090,24 @@ class XLNetForSequenceClassification(XLNetPreTrainedModel):
             list of ``torch.FloatTensor`` (one for each layer):
             that contains pre-computed hidden-states (key and values in the attention blocks) as computed by the model
             (see `mems` input above). Can be used to speed up sequential decoding and attend to longer context.
-        **attentions**: (`optional`, returned when ``config.output_attentions=True``)
-            list of ``torch.FloatTensor`` (one for each layer) of shape ``(batch_size, num_heads, sequence_length, sequence_length)``:
-            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention heads.
         **hidden_states**: (`optional`, returned when ``config.output_hidden_states=True``)
             list of ``torch.FloatTensor`` (one for the output of each layer + the output of the embeddings)
             of shape ``(batch_size, sequence_length, hidden_size)``:
             Hidden-states of the model at the output of each layer plus the initial embedding outputs.
+        **attentions**: (`optional`, returned when ``config.output_attentions=True``)
+            list of ``torch.FloatTensor`` (one for each layer) of shape ``(batch_size, num_heads, sequence_length, sequence_length)``:
+            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention heads.
 
     Examples::
 
-        >>> config = XLNetConfig.from_pretrained('xlnet-large-cased')
-        >>> tokenizer = XLNetTokenizer.from_pretrained('xlnet-large-cased')
-        >>> 
-        >>> model = XLNetForSequenceClassification(config)
-        >>> input_ids = torch.tensor(tokenizer.encode("Hello, my dog is cute")).unsqueeze(0)  # Batch size 1
-        >>> labels = torch.tensor([1]).unsqueeze(0)  # Batch size 1
-        >>> outputs = model(input_ids, labels=labels)
-        >>> loss, logits = outputs[:2]
+        config = XLNetConfig.from_pretrained('xlnet-large-cased')
+        tokenizer = XLNetTokenizer.from_pretrained('xlnet-large-cased')
+        
+        model = XLNetForSequenceClassification(config)
+        input_ids = torch.tensor(tokenizer.encode("Hello, my dog is cute")).unsqueeze(0)  # Batch size 1
+        labels = torch.tensor([1]).unsqueeze(0)  # Batch size 1
+        outputs = model(input_ids, labels=labels)
+        loss, logits = outputs[:2]
 
     """
     def __init__(self, config):
@@ -1190,25 +1190,25 @@ class XLNetForQuestionAnswering(XLNetPreTrainedModel):
             list of ``torch.FloatTensor`` (one for each layer):
             that contains pre-computed hidden-states (key and values in the attention blocks) as computed by the model
             (see `mems` input above). Can be used to speed up sequential decoding and attend to longer context.
-        **attentions**: (`optional`, returned when ``config.output_attentions=True``)
-            list of ``torch.FloatTensor`` (one for each layer) of shape ``(batch_size, num_heads, sequence_length, sequence_length)``:
-            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention heads.
         **hidden_states**: (`optional`, returned when ``config.output_hidden_states=True``)
             list of ``torch.FloatTensor`` (one for the output of each layer + the output of the embeddings)
             of shape ``(batch_size, sequence_length, hidden_size)``:
             Hidden-states of the model at the output of each layer plus the initial embedding outputs.
+        **attentions**: (`optional`, returned when ``config.output_attentions=True``)
+            list of ``torch.FloatTensor`` (one for each layer) of shape ``(batch_size, num_heads, sequence_length, sequence_length)``:
+            Attentions weights after the attention softmax, used to compute the weighted average in the self-attention heads.
 
     Examples::
 
-        >>> config = XLMConfig.from_pretrained('xlm-mlm-en-2048')
-        >>> tokenizer = XLMTokenizer.from_pretrained('xlm-mlm-en-2048')
-        >>> 
-        >>> model = XLMForQuestionAnswering(config)
-        >>> input_ids = torch.tensor(tokenizer.encode("Hello, my dog is cute")).unsqueeze(0)  # Batch size 1
-        >>> start_positions = torch.tensor([1])
-        >>> end_positions = torch.tensor([3])
-        >>> outputs = model(input_ids, start_positions=start_positions, end_positions=end_positions)
-        >>> loss, start_scores, end_scores = outputs[:2]
+        config = XLMConfig.from_pretrained('xlm-mlm-en-2048')
+        tokenizer = XLMTokenizer.from_pretrained('xlm-mlm-en-2048')
+        
+        model = XLMForQuestionAnswering(config)
+        input_ids = torch.tensor(tokenizer.encode("Hello, my dog is cute")).unsqueeze(0)  # Batch size 1
+        start_positions = torch.tensor([1])
+        end_positions = torch.tensor([3])
+        outputs = model(input_ids, start_positions=start_positions, end_positions=end_positions)
+        loss, start_scores, end_scores = outputs[:2]
 
     """
     def __init__(self, config):
